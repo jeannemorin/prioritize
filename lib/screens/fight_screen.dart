@@ -100,11 +100,12 @@ class _FightScreenState extends State<FightScreen>
             child: Padding(
       padding: const EdgeInsets.all(20), //apply padding to all four sides
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const SizedBox(height: 50),
         const Text('Let\'s fight !',
             style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w900,
-                fontSize: 50)),
+                fontSize: 40)),
         const SizedBox(height: 80),
         Stack(
           children: [

@@ -22,6 +22,8 @@ class TodoListScreen extends StatefulWidget {
 class _TodoListScreenState extends State<TodoListScreen>
     with SingleTickerProviderStateMixin {
   final TextEditingController _textController = TextEditingController();
+  FocusNode _focusNode = FocusNode();
+  ScrollController _scrollController = ScrollController();
   late AnimationController _bounceController;
   late Animation<double> _bounceAnimation;
   late bool isTimetoBounce = false;
@@ -38,27 +40,52 @@ class _TodoListScreenState extends State<TodoListScreen>
     _bounceAnimation = Tween<double>(begin: 0.95, end: 1.0).animate(
       CurvedAnimation(parent: _bounceController, curve: Curves.elasticInOut),
     );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollController.animateTo(
+        _scrollController.position.minScrollExtent,
+        duration: Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    bool isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom != 0;
+
     return Scaffold(
       /*appBar: AppBar(
         title: const 
       ),*/
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-              padding: EdgeInsets.all(20), //apply padding to all four sides
-              child: Text('Let\'s prioritize !',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 50))),
-          _itemList(),
-          _fightButton(context),
-        ],
+      body: GestureDetector(
+        onTap: () {
+          FocusScope.of(context).unfocus(); // Unfocus the TextField
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+                padding: EdgeInsets.only(
+                    left: 20,
+                    bottom: 20,
+                    top: 70), //apply padding to all four sides
+                child: Text('Let\'s prioritize !',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 40))),
+            _itemList(),
+            if (!isKeyboardVisible) _fightButton(context),
+          ],
+        ),
       ),
     );
   }
@@ -85,14 +112,18 @@ class _TodoListScreenState extends State<TodoListScreen>
               backgroundColor: const WidgetStatePropertyAll<Color>(
                   Color.fromARGB(255, 107, 53, 234))),
           onPressed: () {
-            widget.todoService.shuffleTodos();
-            Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => FightScreen(
-                          todoService: widget.todoService,
-                          key: const Key("list"),
-                        )));
+            if (widget.todoService.length() > 1) {
+              widget.todoService.shuffleTodos();
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => FightScreen(
+                            todoService: widget.todoService,
+                            key: const Key("list"),
+                          )));
+            } else {
+              null;
+            }
           },
           child: const Text('Fights !',
               style: TextStyle(
@@ -107,14 +138,13 @@ class _TodoListScreenState extends State<TodoListScreen>
   Expanded _itemList() {
     return Expanded(
       child: ReorderableListView(
+        scrollController: _scrollController,
         onReorder: (oldIndex, newIndex) {
           setState(() {
             if (newIndex > oldIndex) {
               newIndex -= 1;
             }
-            final item = widget.todoService.todos.removeAt(oldIndex);
-            widget.todoService.todos.insert(newIndex, item);
-            widget.todoService.saveTodos();
+            widget.todoService.moveTodoItem(oldIndex, newIndex);
           });
         },
         padding: const EdgeInsets.all(20),
@@ -138,11 +168,11 @@ class _TodoListScreenState extends State<TodoListScreen>
                 titleTextStyle: const TextStyle(
                     color: Colors.black,
                     fontWeight: FontWeight.w800,
-                    fontSize: 40),
+                    fontSize: 30),
                 trailing: IconButton(
                   icon: const Icon(Icons.close),
                   color: Colors.black,
-                  iconSize: 40,
+                  iconSize: 30,
                   onPressed: () {
                     setState(() {
                       widget.todoService.removeTodoItem(index);
@@ -163,10 +193,13 @@ class _TodoListScreenState extends State<TodoListScreen>
         children: [
           Expanded(
             child: TextField(
+              focusNode: _focusNode,
               maxLines: 1,
+              maxLength: 18,
               controller: _textController,
               decoration: InputDecoration(
-                hintText: 'Enter new prio',
+                labelText: 'Enter new prio',
+                floatingLabelBehavior: FloatingLabelBehavior.never,
                 focusColor: Theme.of(context).colorScheme.secondary,
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(60),
@@ -195,6 +228,7 @@ class _TodoListScreenState extends State<TodoListScreen>
               icon: const Icon(Icons.add),
               color: Colors.black,
               onPressed: () {
+                FocusScope.of(context).unfocus();
                 if (_textController.text.isNotEmpty) {
                   setState(() {
                     widget.todoService.addTodoItem(_textController.text,

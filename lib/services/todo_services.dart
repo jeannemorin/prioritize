@@ -20,22 +20,32 @@ class TodoService {
   static final TodoService instance = TodoService._privateConstructor();
 
   List<TodoItem> _todos = [];
+  int maxLength = 8;
 
   List<TodoItem> get todos => _todos;
 
   void set todos(List<TodoItem> list) => _todos = list;
 
   void addTodoItem(String title, Color color) {
-    _todos.insert(
-        0,
-        TodoItem(
-            title:
-                "${title[0].toUpperCase()}${title.substring(1).toLowerCase()}",
-            color: color));
+    if (length() < 6) {
+      _todos.insert(
+          0,
+          TodoItem(
+              title:
+                  "${title[0].toUpperCase()}${title.substring(1).toLowerCase()}",
+              color: color));
+    }
+  }
+
+  void moveTodoItem(int oldIndex, int newIndex) {
+    final item = _todos.removeAt(oldIndex);
+    _todos.insert(newIndex, item);
+    saveTodos();
   }
 
   void removeTodoItem(int index) {
     _todos.removeAt(index);
+    saveTodos();
   }
 
   void shuffleTodos() {
